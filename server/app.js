@@ -3,6 +3,7 @@ import * as bcrypt from "bcryptjs";
 import jwt from 'jsonwebtoken'
 // import './db/connection'
 import Users from "./models/Users.js"
+import Conversation from "./models/Conversation.js"
 
 const app = express()
 
@@ -65,6 +66,33 @@ app.post('/api/login', async (req, res, next) => {
             }
         }
     } catch (e) {
+        console.log('error', e)
+    }
+})
+
+app.post('/api/conversation', async (req, res) => {
+    try{
+        const { senderId, receiverId } = req.body
+        const newConversation = new Conversation({ members: [senderId, receiverId] })
+        await newConversation.save()
+        res.status(200).send('newConversation create success')
+    }catch(e){
+        console.log('error', e)
+    }
+})
+
+app.get('/api/conversation/:userId', async (req, res) => {
+    try{
+        const userId = req.params.userId
+        const conversations = await Conversation.find({ members: {$in: [userId]} })
+        const conversationUserData = Promise.all(conversations.map(async conversation=>{
+            const receiverId = conversation.members.find((member=>member!==userId))
+            const user =  await Users.findById(receiverId)
+            return { user:{email:user.email, fullName:user.fullName}, conversationId: conversation._id}
+        }))
+        
+        res.status(200).json(await conversationUserData)
+    }catch(e){
         console.log('error', e)
     }
 })
