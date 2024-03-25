@@ -7,13 +7,63 @@ import Users from "./models/Users.js"
 import Conversation from "./models/Conversation.js"
 import Messages from "./models/Messages.js"
 
+// import { Server } from "socket.io";
+const io = require('socket.io')(8080, {
+    cors: {
+        origin: 'http://localhost:3002'
+    }
+})
+
 const app = express()
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 app.use(cors())
 
-const port = process.env.PORT || 8080
+const port = process.env.PORT || 8000
+// const server = createServer(app);
+// const io = new Server(server);
+
+let users = []
+io.on('connection', (socket) => {
+    console.log('user connected', socket.id);
+    socket.on('addUser', userId => {
+        const isUserExist = users.find(user => user.userId === userId)
+        if (!isUserExist) {
+            const user = { userId, socketId: socket.id }
+            users.push(user)
+            io.emit('getUsers', users)
+        }
+    })
+
+    socket.on('sendMessage', async ({ senderId, receiverId, message, conversationId }) => {
+        const receiver = users.find(user => user.userId === receiverId)
+        const sender = users.find(user => user.userId === senderId)
+        const user = await Users.findById(senderId)
+        if (receiver) {
+            io.to(receiver.socketId).to(sender.socketId).emit('getMessage', {
+                senderId,
+                message,
+                conversationId,
+                receiverId,
+                user: { id: user._id, fullName: user.fullName, email: user.email }
+            })
+        } else {
+            io.to(sender.socketId).emit('getMessage', {
+                senderId,
+                message,
+                conversationId,
+                receiverId,
+                user: { id: user._id, fullName: user.fullName, email: user.email }
+            })
+        }
+    })
+
+    socket.on('disconnect', () => {
+        users = users.filter(user => user.socketId !== socket.id)
+        io.emit('getUsers', users)
+    })
+});
 
 app.get('/', (req, res) => {
     res.send('welcome')
@@ -133,9 +183,9 @@ app.get('/api/message/:conversationId', async (req, res) => {
         const conversationId = req.params.conversationId
         if (conversationId == 'new') {
             const checkConversation = await Conversation.find({ members: { $all: [req.query.senderId, req.query.receiverId] } })
-            if (checkConversation.length > 0){
+            if (checkConversation.length > 0) {
                 checkMessages(checkConversation[0]._id)
-            } else{
+            } else {
                 return res.status(200).json([])
             }
         } else {
