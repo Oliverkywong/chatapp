@@ -74,6 +74,12 @@ const Dashboard = () => {
     }
 
     const sendMessage = async (e) => {
+        socket?.emit('sendMessage', {
+            conversationId: messages?.conversationId,
+            senderId: user?.id,
+            message,
+            receiverId: messages?.receiver?.receiverId
+        })
         const res = await fetch(`http://localhost:8000/api/message`, {
             method: 'POST',
             headers: {
