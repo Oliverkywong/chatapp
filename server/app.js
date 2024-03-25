@@ -1,16 +1,18 @@
 import express from "express";
-import * as bcrypt from "bcryptjs";
+import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import cors from 'cors'
-// import './db/connection'
+import './db/connection.js'
 import Users from "./models/Users.js"
 import Conversation from "./models/Conversation.js"
 import Messages from "./models/Messages.js"
 
 // import { Server } from "socket.io";
+import { createRequire } from 'module'
+const require = createRequire(import.meta.url)
 const io = require('socket.io')(8080, {
     cors: {
-        origin: 'http://localhost:3002'
+        origin: 'http://localhost:3000'
     }
 })
 
@@ -72,6 +74,7 @@ app.get('/', (req, res) => {
 app.post('/api/register', async (req, res, next) => {
     try {
         const { fullName, email, password } = req.body
+        console.log({ fullName, email, password })
         if (!fullName || !email || !password) {
             res.status(400).send('fill all required')
         } else {
@@ -96,6 +99,7 @@ app.post('/api/register', async (req, res, next) => {
 app.post('/api/login', async (req, res, next) => {
     try {
         const { email, password } = req.body
+        console.log({ email, password })
         if (!email || !password) {
             res.status(400).send('fill all required')
         } else {
